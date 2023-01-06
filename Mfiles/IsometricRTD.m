@@ -5,7 +5,7 @@
 %          M-File which reads dynamometer CSV files and finds the
 %     isometric rate of torque development (RTD).
 %
-%          For the CRC dynometer, only one maximum value is found.  
+%          For the CRC dynamometer, only one maximum value is found.  
 %     For the Stafford dynamometer, the isometric torques are divided
 %     into cycles based on the "End Pnt 0" column to find maximum
 %     values for each cycle.
@@ -41,6 +41,9 @@
 %             2% of the maximum torque.
 %
 %     25-Oct-2017 * Mack Gardner-Morse
+%
+%     04-Jan-2023 * Mack Gardner-Morse - Added readmatrix command to
+%     read old (2014) CSV files from the CRC dynamometer.
 %
 
 %#######################################################################
@@ -156,6 +159,13 @@ for k = 1:nfiles
               idyn = menu('Dynamometer?','CRC','Stafford');% Ask user for type of file
          end
          idyn = logical(idyn-1);
+         if ~idyn
+           inew = 0;
+           while inew==0
+                inew = menu('Old or new CSV file(s)?','Old','New');
+           end
+           inew = logical(inew-1);
+         end
          if nfiles>1
            ichk = menu(['Are all of the files from the same ', ...
                         'dynamometer?'],'Yes','No')-1;
@@ -196,8 +206,15 @@ for k = 1:nfiles
      data = textscan(fid,frmt,'Delimiter',',','HeaderLines',1);
      data{4} = data{4}*1.35581795;     % Convert from foot-pounds to Newton-meters
    else
-     frmt = '"%f" "%f" "%f" "%f" "%f"';
-     data = textscan(fid,frmt,'Delimiter',',','HeaderLines',1);
+     if inew
+       frmt = '"%f" "%f" "%f" "%f" "%f"';
+       data = textscan(fid,frmt,'Delimiter',',','HeaderLines',1);
+     else
+       data = readmatrix(fullfile(pnam,fnam),'Delimiter',',', ...
+                         'NumHeaderLines',1);    % Read "old" data files
+       [nr,nc] = size(data);
+       data = mat2cell(data,nr,ones(1,nc));
+     end
    end
 %
    fclose(fid);         % Close CSV file
@@ -300,14 +317,14 @@ for k = 1:nfiles
      set(h6,'Color',[0 0.5 0]);
      ylabel(ha(2),'End Points','Color',[0 0.5 0],'FontSize',12, ...
             'FontWeight','bold');
-     hl = legend([h1;h2;h3;h4;h5;h6;hmx],'Torque','Velocity', ...
-                 'Position','Lowpass Torque','RTD','EndPt', ...
-                 'Max Torque','Location','NorthWest','Orientation', ...
+     hl = legend([h1;h2;h3;h4;h5;h6;hmx],{'Torque';'Velocity'; ...
+                 'Position';'Lowpass Torque';'RTD';'EndPt'; ...
+                 'Max Torque'},'Location','NorthWest','Orientation', ...
                  'horizontal');
    else
      delete(ha(2));
-     hl = legend([h1;h2;h3;h4;h5;hmx],'Torque','Velocity', ...
-                 'Position','Lowpass Torque','RTD','Max Torque', ...
+     hl = legend([h1;h2;h3;h4;h5;hmx],{'Torque';'Velocity'; ...
+                 'Position';'Lowpass Torque';'RTD';'Max Torque'}, ...
                  'Location','NorthWest','Orientation','horizontal');
    end
    set(hl,'FontSize',12,'FontWeight','bold');
